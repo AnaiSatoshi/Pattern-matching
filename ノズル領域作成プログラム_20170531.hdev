@@ -1,0 +1,531 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.1" halcon_version="13.0">
+<procedure name="main">
+<interface/>
+<body>
+<c>*</c>
+<c>* ノズル領域作成プログラム</c>
+<c>* 2017/02/15 北九州高専　岩崎</c>
+<c>*</c>
+<c>* HALCON13</c>
+<c>*</c>
+<l>dev_update_off ()</l>
+<l>dev_close_window ()</l>
+<c></c>
+<c>* 背景画像 画像表示サイズ</c>
+<l>dev_open_window (0, 0, 512, 512, 'black', WindowHandle)</l>
+<c></c>
+<c>* 背景保存画像読み込み</c>
+<l>read_image (Image, 'E:/AMED/ピッキング部画像/0000_Background/CAM1_background.bmp')</l>
+<c></c>
+<c>* 背景画像 表示画面アクティブ</c>
+<l>dev_set_window( WindowHandle )</l>
+<c></c>
+<l>get_image_pointer1 (Image, Pointer, Type, Width, Height)</l>
+<c>* </c>
+<c>* 認識範囲作成</c>
+<l>*gen_rectangle1 (Rectangle, 345, 765, 542, 1279)</l>
+<l>draw_region (Region1, WindowHandle)</l>
+<c></c>
+<c>*</c>
+<c>* カラー画像を各色に分ける</c>
+<l>* decompose3 (Image, R, G, B)</l>
+<c>*</c>
+<c>* 認識範囲設定</c>
+<l>* reduce_domain (B, Region1, ImageReduced)</l>
+<c>*</c>
+<c>* グレー値限定</c>
+<l>* threshold (ImageReduced, Region, 20, 255)</l>
+<c>*</c>
+<c>* 連結成分割り出し</c>
+<l>* connection (Region, ConnectedRegions)</l>
+<c>*</c>
+<c>* 形状特徴量に基づいて領域選択</c>
+<l>* select_shape (ConnectedRegions, SelectedRegions, 'area', 'and', 1000, 99999)</l>
+<c>*</c>
+<c>* クロージングで隣接する領域間の小さなギャップ小さい穴を閉じる</c>
+<l>* closing (SelectedRegions, SelectedRegions, RegionClosing)</l>
+<c>*</c>
+<c>* 輪郭データ取得</c>
+<l> get_region_contour (Region1, Rows, Columns)</l>
+<c>*</c>
+<c>* 輪郭データからXLDオブジェクト生成</c>
+<l> gen_contour_polygon_xld (Contour, Rows, Columns)</l>
+<c>*</c>
+<c>* XLDデータ保存</c>
+<l>write_contour_xld_dxf (Contour, 'C:/Work/anai_test/Nozzle')</l>
+<c></c>
+<c></c>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="PosTop">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="WindowHandle" base_type="ctrl" dimension="0"/>
+<par name="FileHandle" base_type="ctrl" dimension="0"/>
+<par name="ThreshMin" base_type="ctrl" dimension="0"/>
+<par name="ThreshMax" base_type="ctrl" dimension="0"/>
+<par name="AreaMin" base_type="ctrl" dimension="0"/>
+<par name="AreaMax" base_type="ctrl" dimension="0"/>
+<par name="cnt" base_type="ctrl" dimension="0"/>
+<par name="FileHandle_T" base_type="ctrl" dimension="0"/>
+<par name="SerializedItemHandle" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Circularity" base_type="ctrl" dimension="0"/>
+<par name="Yaw" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>dev_update_off ()</l>
+<c>* </c>
+<l>DispRow := 110</l>
+<l>DispCol := 20</l>
+<c>* </c>
+<l>get_image_pointer1 (Image, Pointer, Type, Width, Height)</l>
+<c>* </c>
+<c></c>
+<c>* 背景画像ファイル</c>
+<l>ImageBackFileName := './BackImage/TTT.bmp'</l>
+<c>* </c>
+<c>* 背景画像読み込み</c>
+<l>read_image (ImageBack, ImageBackFileName)</l>
+<c>* </c>
+<c>* </c>
+<l>gen_rectangle1 (Rectangle, 200, 200, Height-200, Width-200)</l>
+<c>* </c>
+<c>* 背景との差分をとる</c>
+<l>sub_image (Image, ImageBack, ImageSub, 1, 128)</l>
+<c></c>
+<l>*deserialize_xld (XLD, SerializedItemHandle)</l>
+<l>read_contour_xld_dxf (XLD, 'C:/Users/user/Desktop/サンプルソース_岩崎/実験機テストa/実験機テストa/Nozzle/Nozzle.dxf', [], [], DxfStatus)</l>
+<c></c>
+<c>* </c>
+<c>* カラー画像を各色に分ける</c>
+<l>decompose3 (ImageSub, R, G, B)</l>
+<c></c>
+<l>paint_xld (XLD, R, ImageResult, 100)</l>
+<c>* </c>
+<c>* 認識範囲</c>
+<l>reduce_domain (ImageResult, Rectangle, ImageReduced)</l>
+<c>* </c>
+<l>threshold (ImageReduced, Region, ThreshMin, ThreshMax)</l>
+<c></c>
+<c>* </c>
+<c>* 円フィッティング</c>
+<l>opening_circle (Region, RegionOpening, 3.5)</l>
+<l>boundary (RegionOpening, RegionBorder, 'inner')</l>
+<l>circularity (RegionOpening, Circularity)</l>
+<c>* </c>
+<l>connection (Region, ConnectedRegions)</l>
+<c>* </c>
+<l>select_shape (ConnectedRegions, SelectedRegions, 'area', 'and', AreaMin, AreaMax)</l>
+<c>* </c>
+<l>union1 (SelectedRegions, RegionUnion)</l>
+<c>* </c>
+<l>smallest_rectangle2 (RegionUnion, Row, Column, Phi, Length1, Length2)</l>
+<c>* </c>
+<l>gen_rectangle2 (Rectangle1, Row, Column, Phi, Length1, Length2)</l>
+<c>* </c>
+<l>dev_set_color ('yellow')</l>
+<c>* </c>
+<l>set_tposition (WindowHandle, 130, 5)</l>
+<c>*[?]Phi*180./3.14の意味？(Phiは長方形の横軸の水平軸への角度)</c>
+<l>write_string (WindowHandle, 'Angle:'+Phi*180./3.14)</l>
+<c>* </c>
+<l>Yaw := Phi*180./3.14</l>
+<c></c>
+<c>* </c>
+<c>* </c>
+<l>dev_set_draw ('margin')</l>
+<l>dev_display (Rectangle1)</l>
+<l>dev_set_color ('yellow')</l>
+<l>* dev_set_draw ('fill')</l>
+<l>* dev_display (RegionUnion)</l>
+<c>* </c>
+<l>return ()</l>
+<c>* </c>
+<c>* </c>
+</body>
+<docu id="PosTop">
+<short lang="ja_JP">姿勢制御 上部カメラ用 画像処理</short>
+<parameters>
+<parameter id="AreaMax"/>
+<parameter id="AreaMin"/>
+<parameter id="Circularity"/>
+<parameter id="FileHandle"/>
+<parameter id="FileHandle_T"/>
+<parameter id="Image">
+<description lang="ja_JP">カメラ画像</description>
+<multivalue>false</multivalue>
+<sem_type>object</sem_type>
+</parameter>
+<parameter id="SerializedItemHandle"/>
+<parameter id="ThreshMax"/>
+<parameter id="ThreshMin"/>
+<parameter id="WindowHandle">
+<default_type>integer</default_type>
+<description lang="ja_JP">ウインドウハンドル</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>window</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="Yaw"/>
+<parameter id="cnt"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="PosX">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="WindowHandle" base_type="ctrl" dimension="0"/>
+<par name="FileHandle" base_type="ctrl" dimension="0"/>
+<par name="ThreshMin" base_type="ctrl" dimension="0"/>
+<par name="ThreshMax" base_type="ctrl" dimension="0"/>
+<par name="AngleStart" base_type="ctrl" dimension="0"/>
+<par name="AngleExtent" base_type="ctrl" dimension="0"/>
+<par name="ScaleMin" base_type="ctrl" dimension="0"/>
+<par name="ScaleMax" base_type="ctrl" dimension="0"/>
+<par name="MinScore1" base_type="ctrl" dimension="0"/>
+<par name="MinScore2" base_type="ctrl" dimension="0"/>
+<par name="WORK" base_type="ctrl" dimension="0"/>
+<par name="TestNo" base_type="ctrl" dimension="0"/>
+<par name="cnt" base_type="ctrl" dimension="0"/>
+<par name="FileHandle_X" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Model" base_type="ctrl" dimension="0"/>
+<par name="Row" base_type="ctrl" dimension="0"/>
+<par name="Column" base_type="ctrl" dimension="0"/>
+<par name="Pitch" base_type="ctrl" dimension="0"/>
+<par name="Scale" base_type="ctrl" dimension="0"/>
+<par name="Score" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>dev_update_off ()</l>
+<c>* </c>
+<l>DispRow1 := 80</l>
+<l>DispCol1 := 20</l>
+<l>DispRow2 := 130</l>
+<l>DispCol2 := 20</l>
+<c>* </c>
+<c>* 背景画像取得</c>
+<l>read_image (ImageBack, './BackImage/XXX.bmp')</l>
+<c>* </c>
+<l>sub_image (Image, ImageBack, ImageSub, 1, 128)</l>
+<l>decompose3 (ImageSub, R, G, B)</l>
+<l>threshold (R, Region, ThreshMin, ThreshMax)</l>
+<l>opening_rectangle1 (Region, RegionOpening, 3, 1)</l>
+<l>connection (RegionOpening, ConnectedRegions)</l>
+<l>select_shape_std (ConnectedRegions, SelectedRegions, 'max_area', 70)</l>
+<c>* </c>
+<l>dev_set_color ('yellow')</l>
+<l>set_tposition (WindowHandle, 130, 5)</l>
+<l>fill_up (SelectedRegions, RegionFillUp)</l>
+<c></c>
+<c>* </c>
+<c>* </c>
+<c></c>
+<c>* モデルファイル読み込み</c>
+<c>* ↓アンプル↓</c>
+<l>read_shape_model ('./shm/アンプル/アトロピン硫酸塩注射液.shm', ModelIDs)</l>
+<l>find_scaled_shape_model (Image, ModelIDs, AngleStart, AngleExtent, ScaleMin, ScaleMax, MinScore1, 1, 0.5, 'least_squares', 0, 0.9, Row0, Column0, Pitch0, Scale0, Score0)</l>
+<c></c>
+<l>read_shape_model ('./shm/アンプル/ケイツーN静注10mg.shm', Model)</l>
+<l>find_scaled_shape_model (Image, Model, AngleStart, AngleExtent, ScaleMin, ScaleMax, MinScore1, 1, 0.5, 'least_squares', 0, 0.9, Row1, Column1, Pitch1, Scale1, Score1)</l>
+<l>tuple_concat (ModelIDs, Model, ModelIDs)</l>
+<c></c>
+<l>read_shape_model ('./shm/アンプル/ゲンタシン注60.shm', Model)</l>
+<l>find_scaled_shape_model (Image, Model, AngleStart, AngleExtent, ScaleMin, ScaleMax, MinScore1, 1, 0.5, 'least_squares', 0, 0.9, Row2, Column2, Pitch2, Scale2, Score2)</l>
+<l>tuple_concat (ModelIDs, Model, ModelIDs)</l>
+<c></c>
+<l>read_shape_model ('./shm/アンプル/デキサート注射液1.65mg.shm', Model)</l>
+<l>find_scaled_shape_model (Image, Model, AngleStart, AngleExtent, ScaleMin, ScaleMax, MinScore1, 1, 0.5, 'least_squares', 0, 0.9, Row3, Column3, Pitch3, Scale3, Score3)</l>
+<l>tuple_concat (ModelIDs, Model, ModelIDs)</l>
+<c></c>
+<l>read_shape_model ('./shm/アンプル/デキサート注射液3.3mg_1mL.shm', Model)</l>
+<l>find_scaled_shape_model (Image, Model, AngleStart, AngleExtent, ScaleMin, ScaleMax, MinScore1, 1, 0.5, 'least_squares', 0, 0.9, Row4, Column4, Pitch4, Scale4, Score4)</l>
+<l>tuple_concat (ModelIDs, Model, ModelIDs)</l>
+<c></c>
+<c></c>
+<l>read_shape_model ('./shm/アンプル/ドルミカム注射液10mg.shm', Model)</l>
+<l>find_scaled_shape_model (Image, Model, AngleStart, AngleExtent, ScaleMin, ScaleMax, MinScore1, 1, 0.5, 'least_squares', 0, 0.9, Row5, Column5, Pitch5, Scale5, Score5)</l>
+<l>tuple_concat (ModelIDs, Model, ModelIDs)</l>
+<c></c>
+<l>read_shape_model ('./shm/アンプル/ペルジピン注射液2mg.shm', Model)</l>
+<l>find_scaled_shape_model (Image, Model, AngleStart, AngleExtent, ScaleMin, ScaleMax, MinScore1, 1, 0.5, 'least_squares', 0, 0.9, Row6, Column6, Pitch6, Scale6, Score6)</l>
+<l>tuple_concat (ModelIDs, Model, ModelIDs)</l>
+<c></c>
+<c>* </c>
+<c>* ↓バイアル↓</c>
+<l>read_shape_model ('./shm/バイアル/シグマート注12mg.shm', Model)</l>
+<l>find_scaled_shape_model (Image, Model, AngleStart, AngleExtent, ScaleMin, ScaleMax, MinScore1, 1, 0.5, 'least_squares', 0, 0.9, Row7, Column7, Pitch7, Scale7, Score7)</l>
+<l>tuple_concat (ModelIDs, Model, ModelIDs)</l>
+<c></c>
+<c></c>
+<l>read_shape_model ('./shm/バイアル/ゾシン静注用4.5.shm', Model)</l>
+<l>find_scaled_shape_model (Image, Model, AngleStart, AngleExtent, ScaleMin, ScaleMax, MinScore1, 1, 0.5, 'least_squares', 0, 0.9, Row8, Column8, Pitch8, Scale8, Score8)</l>
+<l>tuple_concat (ModelIDs, Model, ModelIDs)</l>
+<c></c>
+<c></c>
+<l>read_shape_model ('./shm/バイアル/テイコプラニン点滴静注用200mg.shm', Model)</l>
+<l>find_scaled_shape_model (Image, Model, AngleStart, AngleExtent, ScaleMin, ScaleMax, MinScore1, 1, 0.5, 'least_squares', 0, 0.9, Row9, Column9, Pitch9, Scale9, Score9)</l>
+<l>tuple_concat (ModelIDs, Model, ModelIDs)</l>
+<c></c>
+<c></c>
+<l>read_shape_model ('./shm/バイアル/ノボ・ヘパリン注5千単位_5mL.shm', Model)</l>
+<l>find_scaled_shape_model (Image, Model, AngleStart, AngleExtent, ScaleMin, ScaleMax, MinScore1, 1, 0.5, 'least_squares', 0, 0.9, Row10, Column10, Pitch10, Scale10, Score10)</l>
+<l>tuple_concat (ModelIDs, Model, ModelIDs)</l>
+<c></c>
+<c></c>
+<l>read_shape_model ('./shm/バイアル/ビタメジン静注用.shm', Model)</l>
+<l>find_scaled_shape_model (Image, Model, AngleStart, AngleExtent, ScaleMin, ScaleMax, MinScore1, 1, 0.5, 'least_squares', 0, 0.9, Row11, Column11, Pitch11, Scale11, Score11)</l>
+<l>tuple_concat (ModelIDs, Model, ModelIDs)</l>
+<c></c>
+<c></c>
+<l>read_shape_model ('./shm/バイアル/注射用エラスポール100.shm', Model)</l>
+<l>find_scaled_shape_model (Image, Model, AngleStart, AngleExtent, ScaleMin, ScaleMax, MinScore1, 1, 0.5, 'least_squares', 0, 0.9, Row12, Column12, Pitch12, Scale12, Score12)</l>
+<l>tuple_concat (ModelIDs, Model, ModelIDs)</l>
+<c></c>
+<c></c>
+<c></c>
+<c>* </c>
+<c>* ↓不要物↓</c>
+<l>read_shape_model ('./shm/異物/バイアルキャップ.shm', Model)</l>
+<l>find_scaled_shape_model (Image, Model, AngleStart, AngleExtent, ScaleMin, ScaleMax, MinScore1, 1, 0.5, 'least_squares', 0, 0.9, Row13, Column13, Pitch13, Scale13, Score13)</l>
+<l>tuple_concat (ModelIDs, Model, ModelIDs)</l>
+<c></c>
+<c>* </c>
+<c>* 全モデルとマッチング</c>
+<l>find_scaled_shape_models (Image, ModelIDs, -rad(AngleStart), rad(AngleExtent), ScaleMin, ScaleMax, MinScore2, 1, 0.5, 'least_squares', 0, 0.9, Row, Column, Pitch, Scale, Score, Model)</l>
+<c></c>
+<c>* モデルファイル比較のログデータ</c>
+<l>* ResultModelID := [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]</l>
+<l>* ResultRow := [Row0, Row1, Row2, Row3, Row4, Row5, Row6, Row7, Row8, Row9, Row10, Row11, Row12, Row13, Row]</l>
+<l>* ResultColumn := [Column0, Column1, Column2, Column3, Column4, Column5, Column6, Column7, Column8, Column9, Column10, Column11, Column12, Column13, Column]</l>
+<l>* ResultPitch := [Pitch0, Pitch1, Pitch2, Pitch3, Pitch4, Pitch5, Pitch6, Pitch7, Pitch8, Pitch9, Pitch10, Pitch11, Pitch12, Pitch13, Pitch]</l>
+<l>* ResultScale := [Scale0, Scale1, Scale2, Scale3, Scale4, Scale5, Scale6, Scale7, Scale8, Scale9, Scale10, Scale11, Scale12, Scale13, Scale]</l>
+<l>* ResultScore := [Score0, Score1, Score2, Score3, Score4, Score5, Score6, Score7, Score8, Score9, Score10, Score11, Score12, Score13, Score]</l>
+<c>* </c>
+<l>* fwrite_string (FileHandle, 'モデルファイル比較データ' + '\n')</l>
+<l>* fwrite_string (FileHandle, 'ModelID' + ',')</l>
+<l>* fwrite_string (FileHandle, ResultModelID + ',')</l>
+<l>* fwrite_string (FileHandle, Model + ',')</l>
+<l>* fwrite_string (FileHandle, '\n')</l>
+<l>* fwrite_string (FileHandle, 'Row : '+',')</l>
+<l>* fwrite_string (FileHandle, ResultRow + ',')</l>
+<l>* fwrite_string (FileHandle, '\n')</l>
+<l>* fwrite_string (FileHandle, 'Column : '+',')</l>
+<l>* fwrite_string (FileHandle, ResultColumn + ',')</l>
+<l>* fwrite_string (FileHandle, '\n')</l>
+<l>* fwrite_string (FileHandle, 'Pitch : '+',')</l>
+<l>* fwrite_string (FileHandle, ResultPitch + ',')</l>
+<l>* fwrite_string (FileHandle, '\n')</l>
+<l>* fwrite_string (FileHandle, 'Scale : '+',')</l>
+<l>* fwrite_string (FileHandle, ResultScale + ',')</l>
+<l>* fwrite_string (FileHandle, '\n')</l>
+<l>* fwrite_string (FileHandle, 'Score : '+',')</l>
+<l>* fwrite_string (FileHandle, ResultScore + ',')</l>
+<l>* fwrite_string (FileHandle, '\n\n\n')</l>
+<c>* </c>
+<c>* ここに ScoreがNULLの場合の判定を入れる予定</c>
+<l>if (Score &lt; MinScore2)</l>
+<l>    dev_set_color ('red')</l>
+<l>    set_tposition (WindowHandle, DispRow1, DispCol1)</l>
+<l>    write_string (WindowHandle, 'Score:' + Score + ' NG')</l>
+<l>    Model := ''</l>
+<l>    Row := ''</l>
+<l>    Column := ''</l>
+<l>    Pitch := ''</l>
+<l>    Scale := ''</l>
+<l>    Score := ''</l>
+<l>    return ()</l>
+<l>endif</l>
+<c>* </c>
+<c>* マッチング状態表示準備</c>
+<l>get_shape_model_contours (ModelContours, ModelIDs[Model], 1)</l>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_translate (HomMat2DIdentity, Row, Column, HomMat2DTranslate)</l>
+<l>hom_mat2d_rotate (HomMat2DTranslate, Pitch, Row, Column, HomMat2DRotate)</l>
+<l>hom_mat2d_scale (HomMat2DRotate, Scale, Scale, Row, Column, HomMat2DScale)</l>
+<l>affine_trans_contour_xld (ModelContours, ModelTrans, HomMat2DScale)</l>
+<c>* </c>
+<c>* マッチング状態表示</c>
+<l>dev_set_color ('yellow')</l>
+<l>dev_display (ModelTrans)</l>
+<c>* </c>
+<l>if (Model == 0)</l>
+<l>    dev_set_color ('green')</l>
+<l>    set_tposition (WindowHandle, DispRow1, DispCol1)</l>
+<l>    write_string (WindowHandle, 'Score:' + Score)</l>
+<l>    set_tposition (WindowHandle, DispRow2, DispCol2)</l>
+<l>    write_string (WindowHandle, 'Model:アトロピン硫酸塩注射液.shm')</l>
+<l>    Judge := 1</l>
+<l>elseif (Model == 1)</l>
+<l>    dev_set_color ('green')</l>
+<l>    set_tposition (WindowHandle, DispRow1, DispCol1)</l>
+<l>    write_string (WindowHandle, 'Score:' + Score)</l>
+<l>    set_tposition (WindowHandle, DispRow2, DispCol2)</l>
+<l>    write_string (WindowHandle, 'Model:ケイツーN静注10mg.shm')</l>
+<l>    Judge := 1</l>
+<l>elseif (Model == 2)</l>
+<l>    dev_set_color ('green')</l>
+<l>    set_tposition (WindowHandle, DispRow1, DispCol1)</l>
+<l>    write_string (WindowHandle, 'Score:' + Score)</l>
+<l>    set_tposition (WindowHandle, DispRow2, DispCol2)</l>
+<l>    write_string (WindowHandle, 'Model:ゲンタシン注60.shm')</l>
+<l>    Judge := 1</l>
+<l>elseif (Model == 3)</l>
+<l>    dev_set_color ('green')</l>
+<l>    set_tposition (WindowHandle, DispRow1, DispCol1)</l>
+<l>    write_string (WindowHandle, 'Score:' + Score)</l>
+<l>    set_tposition (WindowHandle, DispRow2, DispCol2)</l>
+<l>    write_string (WindowHandle, 'Model:デキサート注射液1.65mg.shm')</l>
+<l>    Judge := 1</l>
+<l>elseif (Model == 4)</l>
+<l>    dev_set_color ('green')</l>
+<l>    set_tposition (WindowHandle, DispRow1, DispCol1)</l>
+<l>    write_string (WindowHandle, 'Score:' + Score)</l>
+<l>    set_tposition (WindowHandle, DispRow2, DispCol2)</l>
+<l>    write_string (WindowHandle, 'Model:デキサート注射液3.3mg_1mL.shm')</l>
+<l>    Judge := 1</l>
+<l>elseif (Model == 5)</l>
+<l>    dev_set_color ('green')</l>
+<l>    set_tposition (WindowHandle, DispRow1, DispCol1)</l>
+<l>    write_string (WindowHandle, 'Score:' + Score)</l>
+<l>    set_tposition (WindowHandle, DispRow2, DispCol2)</l>
+<l>    write_string (WindowHandle, 'Model:ドルミカム注射液10mg.shm')</l>
+<l>    Judge := 1</l>
+<l>elseif (Model == 6)</l>
+<l>    dev_set_color ('green')</l>
+<l>    set_tposition (WindowHandle, DispRow1, DispCol1)</l>
+<l>    write_string (WindowHandle, 'Score:' + Score)</l>
+<l>    set_tposition (WindowHandle, DispRow2, DispCol2)</l>
+<l>    write_string (WindowHandle, 'Model:ペルジピン注射液2mg.shm')</l>
+<l>    Judge := 1</l>
+<l>elseif (Model == 7)</l>
+<l>    dev_set_color ('green')</l>
+<l>    set_tposition (WindowHandle, DispRow1, DispCol1)</l>
+<l>    write_string (WindowHandle, 'Score:' + Score)</l>
+<l>    set_tposition (WindowHandle, DispRow2, DispCol2)</l>
+<l>    write_string (WindowHandle, 'Model:シグマート注12mg.shm')</l>
+<l>    Judge := 1</l>
+<l>elseif (Model == 8)</l>
+<l>    dev_set_color ('green')</l>
+<l>    set_tposition (WindowHandle, DispRow1, DispCol1)</l>
+<l>    write_string (WindowHandle, 'Score:' + Score)</l>
+<l>    set_tposition (WindowHandle, DispRow2, DispCol2)</l>
+<l>    write_string (WindowHandle, 'Model:ゾシン静注用4.5.shm')</l>
+<l>    Judge := 1</l>
+<l>elseif (Model == 9)</l>
+<l>    dev_set_color ('green')</l>
+<l>    set_tposition (WindowHandle, DispRow1, DispCol1)</l>
+<l>    write_string (WindowHandle, 'Score:' + Score)</l>
+<l>    set_tposition (WindowHandle, DispRow2, DispCol2)</l>
+<l>    write_string (WindowHandle, 'Model:テイコプラニン点滴静注用200mg.shm')</l>
+<l>    Judge := 1</l>
+<l>elseif (Model == 10)</l>
+<l>    dev_set_color ('green')</l>
+<l>    set_tposition (WindowHandle, DispRow1, DispCol1)</l>
+<l>    write_string (WindowHandle, 'Score:' + Score)</l>
+<l>    set_tposition (WindowHandle, DispRow2, DispCol2)</l>
+<l>    write_string (WindowHandle, 'Model:ノボ・ヘパリン注5千単位_5mL.shm')</l>
+<l>    Judge := 1</l>
+<l>elseif (Model == 11)</l>
+<l>    dev_set_color ('green')</l>
+<l>    set_tposition (WindowHandle, DispRow1, DispCol1)</l>
+<l>    write_string (WindowHandle, 'Score:' + Score)</l>
+<l>    set_tposition (WindowHandle, DispRow2, DispCol2)</l>
+<l>    write_string (WindowHandle, 'Model:ビタメジン静注用.shm.shm')</l>
+<l>    Judge := 1</l>
+<l>elseif (Model == 12)</l>
+<l>    dev_set_color ('green')</l>
+<l>    set_tposition (WindowHandle, DispRow1, DispCol1)</l>
+<l>    write_string (WindowHandle, 'Score:' + Score)</l>
+<l>    set_tposition (WindowHandle, DispRow2, DispCol2)</l>
+<l>    write_string (WindowHandle, 'Model:注射用エラスポール100.shm.shm')</l>
+<l>    Judge := 1</l>
+<l>elseif (Model == 13)</l>
+<l>    dev_set_color ('green')</l>
+<l>    set_tposition (WindowHandle, DispRow1, DispCol1)</l>
+<l>    write_string (WindowHandle, 'Score:' + Score)</l>
+<l>    set_tposition (WindowHandle, DispRow2, DispCol2)</l>
+<l>    write_string (WindowHandle, 'Model:バイアルキャップ.shm.shm')</l>
+<l>    Judge := 1</l>
+<l>else</l>
+<l>    dev_set_color ('red')</l>
+<l>    set_tposition (WindowHandle, DispRow1, DispCol1)</l>
+<l>    write_string (WindowHandle, 'NG')</l>
+<l>    Judge := 0</l>
+<l>endif</l>
+<c>* </c>
+<c></c>
+<l>for Index := |Model| to 0 by 1</l>
+<l>    tuple_remove (ModelIDs, Index, ModelIDs)</l>
+<l>endfor</l>
+<c></c>
+<l>for nCnt := 0 to |Model| by 1</l>
+<l>    clear_shape_model (ModelIDs[nCnt])</l>
+<l>endfor</l>
+<c>* </c>
+<c></c>
+<c></c>
+<l>dev_set_color ('green')</l>
+<l>dev_set_draw ('margin')</l>
+<l>dev_display (RegionFillUp)</l>
+<l>dev_set_color ('yellow')</l>
+<c>* </c>
+<l>return ()</l>
+<c>* </c>
+</body>
+<docu id="PosX">
+<parameters>
+<parameter id="AngleExtent"/>
+<parameter id="AngleStart"/>
+<parameter id="Column"/>
+<parameter id="FileHandle"/>
+<parameter id="FileHandle_X"/>
+<parameter id="Image">
+<multivalue>false</multivalue>
+<sem_type>object</sem_type>
+</parameter>
+<parameter id="MinScore1"/>
+<parameter id="MinScore2"/>
+<parameter id="Model"/>
+<parameter id="Pitch"/>
+<parameter id="Row"/>
+<parameter id="Scale"/>
+<parameter id="ScaleMax"/>
+<parameter id="ScaleMin"/>
+<parameter id="Score"/>
+<parameter id="TestNo"/>
+<parameter id="ThreshMax"/>
+<parameter id="ThreshMin"/>
+<parameter id="WORK"/>
+<parameter id="WindowHandle">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>window</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="cnt"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>
