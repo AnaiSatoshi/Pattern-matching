@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.1" halcon_version="13.0">
+<procedure name="main">
+<interface/>
+<body>
+<c></c>
+<c>* 時刻を取得</c>
+<l>get_system_time (MSecond, Second, Minute, Hour, Day, YDay, Month, Year)</l>
+<c></c>
+<c>* 実験ログファイル　オープン</c>
+<l>open_file ('E:/AMED/ピッキング部画像/Debug/姿勢制御デバッグ/姿勢データ' + Year + Month + Day + Hour + Minute + Second + '.csv', 'output', FileHandle1)</l>
+<c></c>
+<c>* 認識しきい値</c>
+<l>ThreshMin := 0</l>
+<l>ThreshMax := 50</l>
+<c>* モデルの許容回転角度</c>
+<l>AngleStart := 0</l>
+<l>AngleExtent := 360</l>
+<c>* スケール許容</c>
+<l>ScaleMin := 0.9</l>
+<l>ScaleMax := 1.1</l>
+<c>* 最少スコア</c>
+<l>MinScore1 := 0.1</l>
+<l>MinScore2 := 0.5</l>
+<c></c>
+<c>* 実験条件をファイルに書き出す</c>
+<l>fwrite_string (FileHandle1, '二値化での有効範囲' + ',' + ThreshMin + ',' + '～' + ',' + ThreshMax + '\n')</l>
+<l>fwrite_string (FileHandle1, 'モデルの回転' + ',' + AngleStart + ',' + '～' + ',' + AngleExtent + '\n')</l>
+<l>fwrite_string (FileHandle1, 'スケール許容' + ',' + ScaleMin + ',' + '～' + ',' + ScaleMax + '\n')</l>
+<l>fwrite_string (FileHandle1, '最少スコア値（個々のモデルと比較時）' + ',' + MinScore1 + '\n')</l>
+<l>fwrite_string (FileHandle1, '最少スコア値（全てのモデルと比較時）' + ',' + MinScore2 + '\n\n')</l>
+<c></c>
+<c>* 水平カメラ 画像表示サイズ 1/4 とする</c>
+<l>dev_open_window (0, 0, 512, 512, 'black', WindowHandle)</l>
+<c>* フォント指定</c>
+<l>set_display_font (WindowHandle, 16, 'mono', 'true', 'false')</l>
+<c></c>
+<l>fwrite_string (FileHandle1, '画像番号' + ',' + 'ModelID' + ',' + 'Score' + ',' + 'Row' + ',' + 'Column' + ',' + 'Pitch' + ',' + 'Scale' + '\n')</l>
+<c></c>
+<c>* CAM1画像をリストの持たせる</c>
+<c></c>
+<l>list_image_files ('E:/AMED/ピッキング部画像/モデルファイル用', 'default', 'recursive', ImageFiles)</l>
+<c></c>
+<c>* 背景画像の読み取り</c>
+<l>read_image (BackImage, 'E:/AMED/ピッキング部画像/0000_Background/CAM2_background.bmp')</l>
+<c></c>
+<l>for nCnt := 1 to |ImageFiles| by 1</l>
+<l>    read_image (Image, ImageFiles[nCnt-1])</l>
+<c>    </c>
+<c>    * </c>
+<l>    get_image_pointer1 (Image, Pointer, Type, Width, Height)</l>
+<c>    * </c>
+<c>    </c>
+<c>    * 認識範囲作成</c>
+<l>    gen_rectangle1 (Rectangle, 320, 140, 800, 1100)</l>
+<c>    * </c>
+<c>    * 背景との差分をとる</c>
+<l>    sub_image (Image, BackImage, ImageSub, 10, 128)</l>
+<c>    *</c>
+<c>    * ノズル部分のXLDデータ読み込み</c>
+<l>    read_contour_xld_dxf (Contours, 'E:/AMED/ピッキング部画像/Nozzle/X_Nozzle.dxf', [], [], DxfStatus)</l>
+<c>    * </c>
+<c>    * カラー画像を各色に分ける</c>
+<l>    decompose3 (ImageSub, R, G, B)</l>
+<c>    *</c>
+<c>    * ノズル領域を塗りつぶす</c>
+<l>    paint_xld (Contours, R, ImageResult, 255)</l>
+<c>    * </c>
+<c>    * 認識範囲設定</c>
+<l>    reduce_domain (ImageResult, Rectangle, ImageReduced)</l>
+<c>    * </c>
+<l>    threshold (ImageReduced, Region, ThreshMin, ThreshMax)</l>
+<c>    * </c>
+<c>    * 円フィッティング</c>
+<l>    opening_circle (Region, RegionOpening, 3.5)</l>
+<l>    boundary (RegionOpening, RegionBorder, 'inner')</l>
+<c>    * </c>
+<l>    connection (Region, ConnectedRegions)</l>
+<c>    * </c>
+<c>    </c>
+<l>    select_shape_std (ConnectedRegions, SelectedRegions, 'max_area', 70)</l>
+<c>    * </c>
+<l>    dev_set_color( 'yellow' )</l>
+<l>    dev_clear_window ()</l>
+<l>    dev_display (SelectedRegions)</l>
+<l>    dump_window_image (Image1, WindowHandle)</l>
+<c>    </c>
+<l>    AngleStart := 180</l>
+<l>    AngleExtent := 180</l>
+<l>    SizeMin := 0.9</l>
+<l>    SizeMax := 1.1</l>
+<c></c>
+<c>    * モデル作成</c>
+<l>    create_scaled_shape_model (ImageReduced, 'auto', -rad(AngleStart), rad(AngleExtent), 'auto', SizeMin, SizeMax, 'auto', 'auto', 'use_polarity', 'auto', 'auto', ModelID)</l>
+<l>    get_shape_model_contours (ModelContours, ModelID, 1)</l>
+<c>    </c>
+<c>    </c>
+<l>    dev_display (SelectedRegions)</l>
+<l>    dev_display( ImageReduced )</l>
+<c>    </c>
+<c>    * モデルデータ保存</c>
+<l>    write_shape_model (ModelID, 'E:/AMED/ピッキング部画像/ModelFiles/Margin/shm/' + nCnt)</l>
+<l>    write_image( ImageReduced, 'bmp', 16711680, 'E:/AMED/ピッキング部画像/ModelFiles/Margin/bmp/' + nCnt)</l>
+<c></c>
+<c>    * モデルデータ解放</c>
+<l>    clear_shape_model (ModelID)</l>
+<c></c>
+<c>    * モデル作成</c>
+<l>    create_scaled_shape_model (Image1, 'auto', -rad(AngleStart), rad(AngleExtent), 'auto', SizeMin, SizeMax, 'auto', 'auto', 'use_polarity', 'auto', 'auto', ModelID)</l>
+<l>    get_shape_model_contours (ModelContours, ModelID, 1)</l>
+<c>    </c>
+<c>    * フィルアップ後データ保存</c>
+<l>    write_shape_model (ModelID, 'E:/AMED/ピッキング部画像/ModelFiles/Fillup/shm/' + nCnt)</l>
+<l>    write_image( Image1, 'bmp', 16711680, 'E:/AMED/ピッキング部画像/ModelFiles/Fillup/bmp/' + nCnt )</l>
+<c>    </c>
+<c>    </c>
+<c>    * モデルデータ解放</c>
+<l>    clear_shape_model (ModelID)</l>
+<c></c>
+<l>endfor</l>
+<c></c>
+<l>close_file (FileHandle1)</l>
+<c></c>
+<c></c>
+<c></c>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+</hdevelop>
